@@ -9,17 +9,9 @@ const Stack = createStackNavigator();
 const AppNavigator = () => {
   return (
     <NavigationContainer>
-      <Stack.Navigator>
-        <Stack.Screen
-          name="BleScanScreen"
-          component={BleScanScreen}
-          options={{title: 'BLE Scanner'}}
-        />
-        <Stack.Screen
-          name="BleDataScreen"
-          component={BleDataScreen}
-          options={{title: 'Device Data'}}
-        />
+      <Stack.Navigator screenOptions={{headerShown: false}}>
+        <Stack.Screen name="BleScanScreen" component={BleScanScreen} />
+        <Stack.Screen name="BleDataScreen" component={BleDataScreen} />
       </Stack.Navigator>
     </NavigationContainer>
   );
