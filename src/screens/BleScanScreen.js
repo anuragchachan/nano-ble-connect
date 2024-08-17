@@ -140,8 +140,11 @@ const BleScanScreen = ({navigation}) => {
           ? {
               text: 'Enable',
               onPress: () => {
-                BleManager.enableBluetooth();
-                handleScan();
+                BleManager.enableBluetooth()
+                  .then(() => handleScan())
+                  .catch(error => {
+                    Alert.alert('Error enabling Bluetooth:', error);
+                  });
               },
             }
           : {
@@ -155,6 +158,8 @@ const BleScanScreen = ({navigation}) => {
 
   const handleScan = () => {
     setLoading(true);
+    console.log(isBluetoothOn);
+
     if (isBluetoothOn) {
       if (!isScanning) {
         // Start scanning
@@ -190,24 +195,48 @@ const BleScanScreen = ({navigation}) => {
   };
 
   const handleConnectToDevice = device => {
+    // console.log(device, '193');
     BleManager.connect(device.id).then(() => {
-      navigation.navigate('BleDataScreen', {deviceId: device.id});
+      navigation.navigate('BleDataScreen', {device: device});
     });
   };
 
   const renderItem = ({item}) => {
     return (
-      <View style={styles.flatlistCard}>
-        <Text style={{color: '#000', fontWeight: 500, fontSize: 14}}>
-          {item?.name || 'Unnamed Device'}
-        </Text>
-        <Pressable
-          onPress={() => handleConnectToDevice(item)}
-          style={styles.connectBtn}>
-          <Text style={{color: '#FFF', fontSize: 16, fontWeight: 500}}>
-            Connect
+      <View
+        style={{
+          flex: 2,
+          marginBottom: 10,
+          backgroundColor: '#e7eef8',
+          padding: 5,
+          borderRadius: 5,
+        }}>
+        {/* row 1 */}
+        <View style={styles.rowCard}>
+          <Text style={{color: '#000', fontWeight: 500, fontSize: 16}}>
+            {item?.name || 'Unnamed Device'}
           </Text>
-        </Pressable>
+          <Pressable
+            onPress={() => handleConnectToDevice(item)}
+            style={styles.connectBtn}>
+            <Text style={{color: '#FFF', fontSize: 16, fontWeight: 500}}>
+              Connect
+            </Text>
+          </Pressable>
+        </View>
+        {/* row 2 */}
+        <View style={styles.rowCard}>
+          <Text
+            style={{
+              fontSize: 14,
+              color: '#000',
+            }}>{`Device ID : ${item.id}`}</Text>
+          <Text
+            style={{
+              fontSize: 14,
+              color: '#000',
+            }}>{`Signal : ${item.rssi} dBm`}</Text>
+        </View>
       </View>
     );
   };
@@ -246,8 +275,14 @@ const BleScanScreen = ({navigation}) => {
             keyExtractor={item => item.id}
             ListHeaderComponent={
               devices?.length > 0 && (
-                <Text style={{color: '#000', fontSize: 16, marginVertical: 5}}>
-                  List of Devices found
+                <Text
+                  style={{
+                    color: '#000',
+                    fontSize: 16,
+                    marginVertical: 5,
+                    textTransform: 'capitalize',
+                  }}>
+                  List of Devices Found
                 </Text>
               )
             }
@@ -278,17 +313,17 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
   },
-  flatlistCard: {
-    flex: 2,
+  flatlistCard: {},
+  rowCard: {
+    flex: 1,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    borderWidth: 1,
-    marginBottom: 10,
   },
   connectBtn: {
     backgroundColor: '#1e90ff',
-    padding: 8,
+    paddingHorizontal: 10,
+    paddingVertical: 6,
     borderRadius: 4,
   },
   loader: {

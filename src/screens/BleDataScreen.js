@@ -1,61 +1,99 @@
 import React, {useEffect, useState} from 'react';
-import {View, Text, Button} from 'react-native';
+import {
+  View,
+  Text,
+  NativeEventEmitter,
+  NativeModules,
+  Alert,
+  StyleSheet,
+  Pressable,
+} from 'react-native';
 import BleManager from 'react-native-ble-manager';
 import RNFS from 'react-native-fs';
 import {SafeAreaView} from 'react-native-safe-area-context';
 
-const BleDataScreen = ({route}) => {
-  const {deviceId} = route.params;
+const BleDataScreen = ({route, navigation}) => {
+  const bleManagerEmitter = new NativeEventEmitter(NativeModules.BleManager);
+  const {device} = route.params;
+  const {id: deviceId, name: deviceName} = device;
   const [data, setData] = useState([]);
 
   useEffect(() => {
-    BleManager.retrieveServices(deviceId).then(() => {
-      BleManager.startNotification(
-        deviceId,
-        'serviceUUID',
-        'characteristicUUID',
-      ).then(() => {
-        console.log('Notification started');
+    BleManager.retrieveServices(deviceId).then(peripheralInfo => {
+      const characteristics = peripheralInfo.characteristics;
+      characteristics.forEach(char => {
+        if (char.properties.Notify) {
+          BleManager.startNotification(
+            deviceId,
+            char.service,
+            char.characteristic,
+          ).then(() => {
+            console.log('Notification started');
+          });
+        }
       });
     });
 
-    const handleUpdateValueForCharacteristic = ({
-      value,
-      peripheral,
-      characteristic,
-      service,
-    }) => {
-      setData(prevData => [...prevData, value]);
+    const handleUpdateValueForCharacteristic = data => {
+      const buffer = new Uint8Array(data.value).buffer;
+      const dataView = new DataView(buffer);
+      const floatValue = dataView.getFloat32(0, true); // true for little-endian
+      // console.log(floatValue);
     };
 
-    const bleManagerEmitter = new NativeEventEmitter(NativeModules.BleManager);
-    bleManagerEmitter.addListener(
+    const characteristicSubcription = bleManagerEmitter.addListener(
       'BleManagerDidUpdateValueForCharacteristic',
       handleUpdateValueForCharacteristic,
     );
 
     return () => {
-      bleManagerEmitter.removeListener(
-        'BleManagerDidUpdateValueForCharacteristic',
-        handleUpdateValueForCharacteristic,
-      );
+      characteristicSubcription.remove();
     };
   }, [deviceId]);
 
-  const saveToCSV = () => {
-    const path = `${RNFS.DocumentDirectoryPath}/data.csv`;
-    const csvContent = data.map(value => value.join(',')).join('\n');
-    RNFS.writeFile(path, csvContent, 'utf8').then(() => {
-      console.log('File saved at:', path);
-    });
+  const handleDisconnect = () => {
+    BleManager.disconnect(deviceId)
+      .then(() => {
+        console.log('device disconnected');
+        navigation.goBack();
+      })
+      .catch(err => {
+        Alert.alert('Error in disconnecting device', err, [
+          {text: 'Ok'},
+          {text: 'Cancel', style: 'cancel'},
+        ]);
+      });
   };
 
   return (
-    <SafeAreaView>
-      <Text>Receiving data from {deviceId}</Text>
-      <Button title="Save to CSV" onPress={saveToCSV} />
+    <SafeAreaView style={{flex: 1}}>
+      <View style={styles.header}>
+        <Text style={{fontSize: 14, fontWeight: '500', color: '#1e90ff'}}>
+          {`Connected To ${deviceName}\n${deviceId}`}
+        </Text>
+        <Pressable onPress={handleDisconnect}>
+          <Text style={{fontSize: 14, fontWeight: '500', color: '#1e90ff'}}>
+            Disconnect
+          </Text>
+        </Pressable>
+      </View>
+      <View style={{flex: 0.95, padding: 5}}></View>
     </SafeAreaView>
   );
 };
 
 export default BleDataScreen;
+
+const styles = StyleSheet.create({
+  header: {
+    flex: 0.05,
+    flexDirection: 'row',
+    paddingVertical: 10,
+    paddingHorizontal: 15,
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: '#e7eef8',
+    borderBottomColor: '#1e90ff',
+    borderBottomWidth: 2,
+  },
+});
