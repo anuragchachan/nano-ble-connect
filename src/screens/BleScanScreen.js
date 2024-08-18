@@ -10,10 +10,13 @@ import {
   Pressable,
   StyleSheet,
   ActivityIndicator,
+  StatusBar,
+  ScrollView,
 } from 'react-native';
 import BleManager from 'react-native-ble-manager';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {request, PERMISSIONS, RESULTS} from 'react-native-permissions';
+import ScannerTab from '../components/ScannerTab';
 
 const BleScanScreen = ({navigation}) => {
   const bleManagerEmitter = new NativeEventEmitter(NativeModules.BleManager);
@@ -25,6 +28,22 @@ const BleScanScreen = ({navigation}) => {
   const [message, setMessage] = useState(
     'To Scan for BLE devices. Click On Scan.',
   );
+  const [tabs, setTabs] = useState([{id: 1, name: 'Scanner'}]);
+  const [activeTab, setActiveTab] = useState(1);
+
+  const addTab = tabName => {
+    const newTabId = tabs.length + 1;
+    setTabs([...tabs, {id: newTabId, name: tabName}]);
+    setActiveTab(newTabId);
+  };
+
+  const deleteTab = tabId => {
+    const fillteredTabs = tabs.filter(tab => tab.id !== tabId);
+    setTabs(fillteredTabs);
+    if (tabId === activeTab) {
+      setActiveTab(1);
+    }
+  };
 
   useEffect(() => {
     let timer;
@@ -197,98 +216,67 @@ const BleScanScreen = ({navigation}) => {
   const handleConnectToDevice = device => {
     // console.log(device, '193');
     BleManager.connect(device.id).then(() => {
-      navigation.navigate('BleDataScreen', {device: device});
+      // navigation.navigate('BleDataScreen', {device: device});
+      addTab(device.name);
     });
   };
 
-  const renderItem = ({item}) => {
-    return (
-      <View
-        style={{
-          flex: 2,
-          marginBottom: 10,
-          backgroundColor: '#e7eef8',
-          padding: 5,
-          borderRadius: 5,
-        }}>
-        {/* row 1 */}
-        <View style={styles.rowCard}>
-          <Text style={{color: '#000', fontWeight: 500, fontSize: 16}}>
-            {item?.name || 'Unnamed Device'}
-          </Text>
-          <Pressable
-            onPress={() => handleConnectToDevice(item)}
-            style={styles.connectBtn}>
-            <Text style={{color: '#FFF', fontSize: 16, fontWeight: 500}}>
-              Connect
-            </Text>
-          </Pressable>
-        </View>
-        {/* row 2 */}
-        <View style={styles.rowCard}>
-          <Text
-            style={{
-              fontSize: 14,
-              color: '#000',
-            }}>{`Device ID : ${item.id}`}</Text>
-          <Text
-            style={{
-              fontSize: 14,
-              color: '#000',
-            }}>{`Signal : ${item.rssi} dBm`}</Text>
-        </View>
-      </View>
-    );
+  const handleTabDelete = tabID => {
+    deleteTab(tabID);
   };
 
   return (
     <SafeAreaView style={{flex: 1}}>
+      <StatusBar barStyle="light-content" backgroundColor={'#5a86d5'} />
       <View style={styles.header}>
-        <Text style={{fontSize: 20, fontWeight: '500', color: '#1e90ff'}}>
-          BLE Scanner
+        <Text style={{fontSize: 20, fontWeight: '500', color: '#FFF'}}>
+          Devices
         </Text>
         <Pressable onPress={handleScan}>
-          <Text style={{fontSize: 20, fontWeight: '500', color: '#1e90ff'}}>
+          <Text
+            style={{
+              fontSize: 16,
+              fontWeight: '500',
+              color: '#FFF',
+              backgroundColor: '#3676E8',
+              paddingVertical: 5,
+              paddingHorizontal: 15,
+              borderRadius: 5,
+            }}>
             {buttonText}
           </Text>
         </Pressable>
       </View>
-      <View style={{flex: 0.95, padding: 5}}>
+      <View style={styles.tabContainer}>
+        <ScrollView horizontal contentContainerStyle={styles.scrollContainer}>
+          {tabs.map(tab => (
+            <Pressable
+              key={tab.id}
+              style={[
+                styles.tabButton,
+                activeTab === tab.id && styles.activeTab,
+              ]}
+              onPress={() => setActiveTab(tab.id)}>
+              <Text style={styles.tabText}>{tab.name}</Text>
+              {tab.id > 1 && (
+                <Pressable
+                  style={{position: 'absolute', top: 5, right: 5}}
+                  onPress={() => handleTabDelete(tab.id)}>
+                  <Text style={{color: '#FFF', fontSize: 16}}>X</Text>
+                </Pressable>
+              )}
+            </Pressable>
+          ))}
+        </ScrollView>
+      </View>
+
+      <View style={{flex: 0.88, padding: 10}}>
         {loading && (
           <View style={styles.loader}>
-            <ActivityIndicator size="large" color="#1E90FF" />
+            <ActivityIndicator size="large" color="#6495ed" />
           </View>
         )}
-        {devices.length === 0 ? (
-          <View style={styles.message}>
-            <Text
-              style={{
-                fontSize: 14,
-                color: '#000',
-              }}>
-              {message}
-            </Text>
-          </View>
-        ) : (
-          <FlatList
-            data={devices}
-            keyExtractor={item => item.id}
-            ListHeaderComponent={
-              devices?.length > 0 && (
-                <Text
-                  style={{
-                    color: '#000',
-                    fontSize: 16,
-                    marginVertical: 5,
-                    textTransform: 'capitalize',
-                  }}>
-                  List of Devices Found
-                </Text>
-              )
-            }
-            renderItem={renderItem}
-          />
-        )}
+        <ScannerTab devices={devices} message={message} />
       </View>
     </SafeAreaView>
   );
@@ -304,28 +292,33 @@ const styles = StyleSheet.create({
     paddingHorizontal: 15,
     justifyContent: 'space-between',
     alignItems: 'center',
-    backgroundColor: '#e7eef8',
-    borderBottomColor: '#1e90ff',
-    borderBottomWidth: 2,
+    backgroundColor: '#6495ed',
   },
-  message: {
-    flex: 1,
+  tabContainer: {
+    flex: 0.07,
+    backgroundColor: '#6495ed',
+  },
+  scrollContainer: {
+    flexDirection: 'row',
+  },
+  tabButton: {
+    height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
+    padding: 15,
   },
-  flatlistCard: {},
-  rowCard: {
-    flex: 1,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  activeTab: {
+    borderBottomColor: '#FFF',
+    borderBottomWidth: 2,
   },
-  connectBtn: {
-    backgroundColor: '#1e90ff',
-    paddingHorizontal: 10,
-    paddingVertical: 6,
-    borderRadius: 4,
+  tabText: {
+    color: '#FFF',
+    fontWeight: '500',
+    fontSize: 16,
+    textAlign: 'center',
+    textTransform: 'capitalize',
   },
+
   loader: {
     ...StyleSheet.absoluteFillObject,
     justifyContent: 'center',
