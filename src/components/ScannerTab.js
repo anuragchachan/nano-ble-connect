@@ -1,7 +1,7 @@
 import {View, Text, FlatList, Pressable, StyleSheet} from 'react-native';
 import React from 'react';
 
-const ScannerTab = ({devices, message}) => {
+const ScannerTab = ({devices, message, onConnect}) => {
   const renderItem = ({item}) => {
     return (
       <View style={styles.itemContainer}>
@@ -11,7 +11,7 @@ const ScannerTab = ({devices, message}) => {
             {item?.name || 'Unnamed Device'}
           </Text>
           <Pressable
-            onPress={() => handleConnectToDevice(item)}
+            onPress={() => onConnect(item.name, item.id)}
             style={styles.connectBtn}>
             <Text style={{color: '#FFF', fontSize: 16, fontWeight: 500}}>
               Connect
@@ -40,8 +40,9 @@ const ScannerTab = ({devices, message}) => {
         <View style={styles.message}>
           <Text
             style={{
-              fontSize: 14,
+              fontSize: 16,
               color: '#000',
+              textTransform: 'capitalize',
             }}>
             {message}
           </Text>
@@ -59,7 +60,7 @@ const ScannerTab = ({devices, message}) => {
                   marginVertical: 5,
                   textTransform: 'capitalize',
                 }}>
-                List of Devices Found
+                list of devices found
               </Text>
             )
           }

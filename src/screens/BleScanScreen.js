@@ -2,7 +2,6 @@ import React, {useEffect, useState} from 'react';
 import {
   View,
   Text,
-  FlatList,
   NativeEventEmitter,
   NativeModules,
   Alert,
@@ -17,6 +16,7 @@ import BleManager from 'react-native-ble-manager';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {request, PERMISSIONS, RESULTS} from 'react-native-permissions';
 import ScannerTab from '../components/ScannerTab';
+import DeviceTab from '../components/DeviceTab';
 
 const BleScanScreen = ({navigation}) => {
   const bleManagerEmitter = new NativeEventEmitter(NativeModules.BleManager);
@@ -31,16 +31,17 @@ const BleScanScreen = ({navigation}) => {
   const [tabs, setTabs] = useState([{id: 1, name: 'Scanner'}]);
   const [activeTab, setActiveTab] = useState(1);
 
-  const addTab = tabName => {
-    const newTabId = tabs.length + 1;
-    setTabs([...tabs, {id: newTabId, name: tabName}]);
-    setActiveTab(newTabId);
+  const addTab = (name, deviceID) => {
+    const id = tabs.length + 1;
+    setTabs([...tabs, {id, name, deviceID}]);
+    setActiveTab(deviceID);
   };
 
-  const deleteTab = tabId => {
+  const handleTabDelete = (tabId, deviceID) => {
+    handleDisconnect(deviceID);
     const fillteredTabs = tabs.filter(tab => tab.id !== tabId);
     setTabs(fillteredTabs);
-    if (tabId === activeTab) {
+    if (deviceID === activeTab) {
       setActiveTab(1);
     }
   };
@@ -213,16 +214,41 @@ const BleScanScreen = ({navigation}) => {
     }
   };
 
-  const handleConnectToDevice = device => {
-    // console.log(device, '193');
-    BleManager.connect(device.id).then(() => {
-      // navigation.navigate('BleDataScreen', {device: device});
-      addTab(device.name);
+  const handleConnectToDevice = (name, deviceID) => {
+    BleManager.connect(deviceID).then(() => {
+      addTab(name, deviceID);
     });
   };
 
-  const handleTabDelete = tabID => {
-    deleteTab(tabID);
+  const handleDisconnect = deviceID => {
+    BleManager.disconnect(deviceID)
+      .then(() => {
+        console.log('device disconnected');
+      })
+      .catch(err => {
+        Alert.alert(
+          'Error in disconnecting device. Please restart bluetooth.',
+          err,
+          [{text: 'Ok'}, {text: 'Cancel', style: 'cancel'}],
+        );
+      });
+  };
+
+  const renderActiveTabContent = () => {
+    if (activeTab === 1) {
+      // Render the ScannerTab for the initial tab
+      return (
+        <ScannerTab
+          devices={devices}
+          message={message}
+          onConnect={handleConnectToDevice}
+        />
+      );
+    } else {
+      // Render the DeviceTab for any other active tab based on deviceID
+      const activeDevice = devices?.find(device => device.id === activeTab);
+      return <DeviceTab device={activeDevice} onDelete={handleDisconnect} />;
+    }
   };
 
   return (
@@ -261,7 +287,7 @@ const BleScanScreen = ({navigation}) => {
               {tab.id > 1 && (
                 <Pressable
                   style={{position: 'absolute', top: 5, right: 5}}
-                  onPress={() => handleTabDelete(tab.id)}>
+                  onPress={() => handleTabDelete(tab.id, tab.deviceID)}>
                   <Text style={{color: '#FFF', fontSize: 16}}>X</Text>
                 </Pressable>
               )}
@@ -276,7 +302,7 @@ const BleScanScreen = ({navigation}) => {
             <ActivityIndicator size="large" color="#6495ed" />
           </View>
         )}
-        <ScannerTab devices={devices} message={message} />
+        {renderActiveTabContent()}
       </View>
     </SafeAreaView>
   );

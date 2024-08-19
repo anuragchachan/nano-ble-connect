@@ -12,7 +12,7 @@ import BleManager from 'react-native-ble-manager';
 import RNFS from 'react-native-fs';
 import {SafeAreaView} from 'react-native-safe-area-context';
 
-const BleDataScreen = ({route, navigation}) => {
+const BleDataScreen = ({route}) => {
   const bleManagerEmitter = new NativeEventEmitter(NativeModules.BleManager);
   const {device} = route.params;
   const {id: deviceId, name: deviceName} = device;
@@ -55,7 +55,6 @@ const BleDataScreen = ({route, navigation}) => {
     BleManager.disconnect(deviceId)
       .then(() => {
         console.log('device disconnected');
-        navigation.goBack();
       })
       .catch(err => {
         Alert.alert('Error in disconnecting device', err, [
@@ -68,11 +67,8 @@ const BleDataScreen = ({route, navigation}) => {
   return (
     <SafeAreaView style={{flex: 1}}>
       <View style={styles.header}>
-        <Text style={{fontSize: 14, fontWeight: '500', color: '#1e90ff'}}>
-          {`Connected To ${deviceName}\n${deviceId}`}
-        </Text>
         <Pressable onPress={handleDisconnect}>
-          <Text style={{fontSize: 14, fontWeight: '500', color: '#1e90ff'}}>
+          <Text style={{fontSize: 14, fontWeight: '500', color: '#FFF'}}>
             Disconnect
           </Text>
         </Pressable>
